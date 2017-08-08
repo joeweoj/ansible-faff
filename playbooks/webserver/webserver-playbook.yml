@@ -1,0 +1,32 @@
+---
+
+- hosts: home
+  vars:
+      nginx_conf_src_path: server.conf.j2
+      nginx_conf_dest_path: /etc/nginx/conf.d/server.conf
+
+  tasks:
+  - name: ensure nginx is at latest version
+    apt: name=nginx state=latest
+    become: yes
+    become_method: sudo
+
+#  - name: copy config
+#    template:
+#      src: "{{ nginx_conf_src_path }}"
+#      dest: "{{ nginx_conf_dest_path }}"
+#    become: yes
+#    become_method: sudo
+#    notify:
+#      - restart nginx
+
+  - name: ensure nginx is started (& enabled at boot)
+    service: name=nginx state=started enabled=true
+    become: yes
+    become_method: sudo
+
+  handlers:
+  - name: restart nginx
+    service: name=nginx state=restarted
+    become: yes
+    become_method: sudo
