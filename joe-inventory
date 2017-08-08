@@ -1,2 +1,11 @@
-joepi
-joewardell.com
+[home]
+joepi ansible_user=pi
+
+[aws]
+joewardell.com ansible_user=ubuntu
+
+[webservers:children]
+aws
+home
+
+[aws:vars]

@@ -1,0 +1,32 @@
+---
+
+- hosts: home
+  vars:
+      apache_conf_src_path: apache2.conf.j2
+      apache_conf_dest_path: /etc/apache2/apache2.conf
+      message: hello!
+      http_port: 80
+
+
+  tasks:
+  - name: ensure apache is at latest version
+    apt: name=apache2 state=latest
+
+  - name: copy config
+    template:
+      src: "{{ apache_conf_src_path }}"
+      dest: "{{ apache_conf_dest_path }}"
+    become: yes
+    become_method: sudo
+    notify:
+      - restart apache
+
+
+  - name: ensure apache is started (& enabled at boot)
+    service: name=apache2 state=started enabled=true
+
+  handlers:
+  - name: restart apache
+    service: name=apache2 state=restarted
+    become: yes
+    become_method: sudo
