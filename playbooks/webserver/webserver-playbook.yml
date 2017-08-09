@@ -4,29 +4,27 @@
   become: yes
   become_method: sudo
 
-
   vars:
       nginx_conf_src_path: nginx.conf.j2
       nginx_conf_dest_path: /etc/nginx/nginx.conf
-
       server_conf_src_path: server.conf.j2
       server_conf_dest_path: /etc/nginx/conf.d/server.conf
 
   tasks:
 
-  # docker
+  # Setup Docker (specific to ubuntu xenial)
   - name: Uninstall Old Versions
     apt:
-      pkg:          "{{ item }}"
-      state:        absent
+      pkg: "{{ item }}"
+      state: absent
     with_items:
       - docker
       - docker-engine
 
   - name: Install dependencies
     apt:
-      pkg:          "{{ item }}"
-      state:        present
+      pkg: "{{ item }}"
+      state: present
       update_cache: true
     with_items:
       - apt-transport-https
@@ -36,45 +34,37 @@
       - python-pip
 
   - name: Install the GPG key
-    shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+    apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
 
   - name: Add Docker repository
     apt_repository:
       repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
       state: present
 
-  - name: install certain python modules for docker
+  - name: Install certain python modules for docker
     pip:
-      name: "{{ item.name }}"
-      version: "{{ item.version }}"
+      name: docker-py
+      version: 1.10.6
       state: present
-    with_items:
-#    - { name: docker, version: 2.0.0 }
-    - { name: docker-py, version: 1.10.6 }
 
   - name: Install Docker
     apt:
-      pkg:          docker-ce=17.03.0~ce-0~ubuntu-xenial
-      state:        present
+      pkg: docker-ce=17.03.0~ce-0~ubuntu-xenial
+      state: present
       update_cache: yes
 
-  - name: Install Docker compose
-    shell: >
-      curl -L https://github.com/docker/compose/releases/download/1.13.0/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose &&
-      sudo chmod +x /usr/local/bin/docker-compose
-    become: true
-
-  - name: pull joewardell.com image
+  - name: Pull joewardell.com image
     docker_image:
       name: joewardell/joewardell.com
       tag: initial
 
-  - name: pull lingfieldunitedtrust.org image
+  - name: Pull lingfieldunitedtrust.org image
     docker_image:
       name: joewardell/lingfieldunitedtrust.org
       tag: initial
 
-  - name: joewardell.com container
+  - name: Start joewardell.com container
     docker_container:
       name: joewardell.com
       image: joewardell/joewardell.com:initial
@@ -82,7 +72,7 @@
       ports:
        - "4000:8080"
 
-  - name: lingfieldunitedtrust.org container
+  - name: Start lingfieldunitedtrust.org container
     docker_container:
       name: lingfieldunitedtrust.org
       image: joewardell/lingfieldunitedtrust.org:initial
@@ -90,25 +80,25 @@
       ports:
        - "5000:80"
 
-  # nginx
-  - name: ensure nginx is at latest version
+  # Setup Nginx
+  - name: Ensure nginx is at latest version
     apt: name=nginx state=latest
 
-  - name: copy nginx config
+  - name: Copy nginx config
     template:
       src: "{{ nginx_conf_src_path }}"
       dest: "{{ nginx_conf_dest_path }}"
     notify:
       - restart nginx
 
-  - name: copy server config
+  - name: Copy server config
     template:
       src: "{{ server_conf_src_path }}"
       dest: "{{ server_conf_dest_path }}"
     notify:
       - restart nginx
 
-  - name: ensure nginx is started (& enabled at boot)
+  - name: Ensure nginx is started (& enabled at boot)
     service: name=nginx state=started enabled=true
 
   handlers:
