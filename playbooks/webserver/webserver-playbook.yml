@@ -1,32 +1,65 @@
 ---
 
-- hosts: home
+- hosts: dev
+  become: yes
+  become_method: sudo
+
+
   vars:
-      nginx_conf_src_path: server.conf.j2
-      nginx_conf_dest_path: /etc/nginx/conf.d/server.conf
+      nginx_conf_src_path: nginx.conf.j2
+      nginx_conf_dest_path: /etc/nginx/nginx.conf
+
+      server_conf_src_path: server.conf.j2
+      server_conf_dest_path: /etc/nginx/conf.d/server.conf
 
   tasks:
+
+  - name: install python 2
+    raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+
+  # docker
+  - name: ensure repository key is installed
+    apt_key:
+      id: "58118E89F3A912897C070ADBF76221572C52609D"
+      keyserver: "hkp://p80.pool.sks-keyservers.net:80"
+      state: present
+
+  - name: ensure docker registry is available
+    apt_repository: repo='deb https://apt.dockerproject.org/repo ubuntu-trusty main' state=present
+
+  - name: ensure docker and dependencies are installed
+    apt: name=docker-engine update_cache=yes
+    notify:
+      - restart docker
+
+
+
+
+
+
+  # nginx
   - name: ensure nginx is at latest version
     apt: name=nginx state=latest
-    become: yes
-    become_method: sudo
 
-#  - name: copy config
-#    template:
-#      src: "{{ nginx_conf_src_path }}"
-#      dest: "{{ nginx_conf_dest_path }}"
-#    become: yes
-#    become_method: sudo
-#    notify:
-#      - restart nginx
+  - name: copy nginx config
+    template:
+      src: "{{ nginx_conf_src_path }}"
+      dest: "{{ nginx_conf_dest_path }}"
+    notify:
+      - restart nginx
+
+  - name: copy server config
+    template:
+      src: "{{ server_conf_src_path }}"
+      dest: "{{ server_conf_dest_path }}"
+    notify:
+      - restart nginx
 
   - name: ensure nginx is started (& enabled at boot)
     service: name=nginx state=started enabled=true
-    become: yes
-    become_method: sudo
 
   handlers:
   - name: restart nginx
     service: name=nginx state=restarted
-    become: yes
-    become_method: sudo
+  - name: restart docker
+    service: name=docker state=restarted

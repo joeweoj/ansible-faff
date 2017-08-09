@@ -1,11 +1,15 @@
+[dev]
+joe-vagrant-box:2222 ansible_user=ubuntu
+
 [home]
 joepi ansible_user=pi
 
 [aws]
 joewardell.com ansible_user=ubuntu
 
+[aws:vars]
+
 [webservers:children]
 aws
 home
 
-[aws:vars]
