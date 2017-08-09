@@ -3,6 +3,7 @@ target/*
 .mvn/*
 mvnw*
 *.iml
+.vagrant
 
 # Compiled class file
 *.class
