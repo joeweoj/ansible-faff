@@ -26,9 +26,9 @@ server {
 	server_name lingfieldunitedtrust.org www.lingfieldunitedtrust.org;
  
     location / {
-    # forward to docker container joewardell/lingfieldunitedtrust.org
-            proxy_pass http://localhost:5000;
-            proxy_set_header Host $host;
+        # forward to docker container joewardell/lingfieldunitedtrust.org
+        proxy_pass http://localhost:5000;
+        proxy_set_header Host $host;
     }
 
     listen 80; # managed by Certbot
