@@ -21,11 +21,6 @@
 
   tasks:
 
-  # BOOTSTRAP
-  #1 - INSTALL PYTHON2?
-
-
-
   # INSTALL PACKAGES
   - name: Uninstall Old Versions
     apt:
