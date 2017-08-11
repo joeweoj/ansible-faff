@@ -1,18 +1,32 @@
 ---
 
-- hosts: dev
+- hosts: aws
   become: yes
   become_method: sudo
 
+  gather_facts: no
+  pre_tasks:
+    - name: 'Install python2'
+      raw: sudo apt-get -y install python-simplejson
+
   vars:
-      nginx_conf_src_path: nginx.conf.j2
+      nginx_conf_src_path: resources/nginx.conf.j2
       nginx_conf_dest_path: /etc/nginx/nginx.conf
-      server_conf_src_path: server.conf.j2
+      server_conf_src_path: resources/server.conf.j2
       server_conf_dest_path: /etc/nginx/conf.d/server.conf
+
+      ssl_conf_src_path: resources/options-ssl-nginx.conf
+      ssl_conf_dest_path: /etc/letsencrypt/options-ssl-nginx.conf
+
 
   tasks:
 
-  # Setup Docker (specific to ubuntu xenial)
+  # BOOTSTRAP
+  #1 - INSTALL PYTHON2?
+
+
+
+  # INSTALL PACKAGES
   - name: Uninstall Old Versions
     apt:
       pkg: "{{ item }}"
@@ -20,6 +34,16 @@
     with_items:
       - docker
       - docker-engine
+
+  - name: Add Docker repository
+    apt_repository:
+      repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
+      state: present
+
+  - name: Add Certbot repository
+    apt_repository:
+      repo: 'ppa:certbot/certbot'
+      state: present
 
   - name: Install dependencies
     apt:
@@ -32,15 +56,12 @@
       - curl
       - software-properties-common
       - python-pip
+      - software-properties-common
+      - python-certbot-nginx
 
-  - name: Install the GPG key
+  - name: Install Docker the GPG key
     apt_key:
       url: https://download.docker.com/linux/ubuntu/gpg
-
-  - name: Add Docker repository
-    apt_repository:
-      repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
-      state: present
 
   - name: Install certain python modules for docker
     pip:
@@ -54,6 +75,9 @@
       state: present
       update_cache: yes
 
+
+
+  # SETUP DOCKER
   - name: Pull joewardell.com image
     docker_image:
       name: joewardell/joewardell.com
@@ -80,7 +104,38 @@
       ports:
        - "5000:80"
 
-  # Setup Nginx
+
+
+
+  #SETUP CERTBOT
+
+
+  - name: ensure nginx is stopped (need port 443 for certbot)
+    service: name=nginx state=stopped enabled=true
+
+  - name: check if cert exists already
+    stat: path=/etc/letsencrypt/live/joewardell.com/fullchain.pem
+    register: cert_stats
+
+  - name: create cert, if does not exist
+    shell: "certbot certonly --standalone --non-interactive --agree-tos --email joewardell@gmail.com -d joewardell.com -d www.joewardell.com -d lingfieldunitedtrust.org -d www.lingfieldunitedtrust.org --force-renewal"
+    when: cert_stats.stat.exists == False
+
+  - name: ensure cron to renew is setup
+    cron:
+      name: "renew ssl certs"
+      minute: 0
+      hour: 5
+      weekday: 1
+      user: root
+      job: "certbot renew"
+
+
+
+
+
+
+  # SETUP NGINX
   - name: Ensure nginx is at latest version
     apt: name=nginx state=latest
 
@@ -98,8 +153,17 @@
     notify:
       - restart nginx
 
+  - name: Copy SSL options
+    copy:
+      src: "{{ ssl_conf_src_path }}"
+      dest: "{{ ssl_conf_dest_path }}"
+      owner: root
+      group: root
+      mode: 0644
+
   - name: Ensure nginx is started (& enabled at boot)
     service: name=nginx state=started enabled=true
+
 
   handlers:
   - name: restart nginx
