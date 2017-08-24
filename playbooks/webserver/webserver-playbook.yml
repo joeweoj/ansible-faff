@@ -81,7 +81,7 @@
   - name: Pull lingfieldunitedtrust.org image
     docker_image:
       name: joewardell/lingfieldunitedtrust.org
-      tag: initial
+      tag: latest
 
   - name: Start joewardell.com container
     docker_container:
@@ -94,7 +94,7 @@
   - name: Start lingfieldunitedtrust.org container
     docker_container:
       name: lingfieldunitedtrust.org
-      image: joewardell/lingfieldunitedtrust.org:initial
+      image: joewardell/lingfieldunitedtrust.org:latest
       state: started
       ports:
        - "5000:80"
